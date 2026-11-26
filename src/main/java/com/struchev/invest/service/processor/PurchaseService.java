@@ -95,7 +95,7 @@ public class PurchaseService {
         // Проверяем задержку в торговле после продажи по stop loss
         if (strategy.getType() == AStrategy.Type.instrumentByFiat && strategy.getDelayBySL() != null) {
             var finishedOrders = orderService.findClosedByFigiAndStrategy(candle.getFigi(), strategy);
-            if (finishedOrders.isEmpty()) {
+            if (!finishedOrders.isEmpty()) {
                 var lastOrder = finishedOrders.getLast();
                 if (ChronoUnit.SECONDS.between(lastOrder.getSellDateTime(), candle.getDateTime()) < strategy.getDelayBySL().getSeconds()) {
                     return;
