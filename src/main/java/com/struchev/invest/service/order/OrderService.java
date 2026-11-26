@@ -13,6 +13,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -26,7 +27,8 @@ public class OrderService {
     private final InstrumentService instrumentService;
     private final ITinkoffOrderAPI tinkoffOrderAPI;
     private final PricesService pricesService;
-
+    @Value("${tinkoff.emulator:true}")
+    private boolean emulator = true;
     private volatile List<OrderDomainEntity> orders;
 
     public OrderDomainEntity findActiveByFigiAndStrategy(String figi, AStrategy strategy) {
@@ -108,7 +110,7 @@ public class OrderService {
         }
 
         // update order in DB
-        order.setSellDateTime(OffsetDateTime.now());
+        order.setSellDateTime(emulator ? candle.getDateTime() : OffsetDateTime.now());
         order.setSellCommission(response.getCommission());
         order.setSellPrice(response.getPrice() == null ? candle.getClosingPrice() : response.getPrice());
         order.setSellProfit(response.getPrice().subtract(order.getPurchasePrice()));
