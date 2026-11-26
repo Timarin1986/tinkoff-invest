@@ -23,24 +23,29 @@ public class TinkoffGRPCAPI extends ATinkoffAPI {
 
     public OrderResult buy(InstrumentService.Instrument instrument, BigDecimal price, Integer count) {
         long quantity = count / instrument.getLot();
-        var quotation = Quotation.newBuilder()
-                .setUnits(price.longValue())
-                .setNano(price.remainder(BigDecimal.ONE).movePointRight(9).intValue())
-                .build();
+        var quotation = toQuotation(price);
         var uuid = UUID.randomUUID().toString();
+
         log.info("Send postOrderSync with: figi {}, quantity {}, quotation {}, direction {}, acc {}, type {}, id {}",
-                instrument.getFigi(), quantity, quotation, OrderDirection.ORDER_DIRECTION_BUY, getAccountId(), OrderType.ORDER_TYPE_MARKET, uuid);
+                instrument.getFigi(), quantity, quotation, OrderDirection.ORDER_DIRECTION_BUY,
+                getAccountId(), OrderType.ORDER_TYPE_MARKET, uuid);
 
         if (getIsSandboxMode()) {
-            var result = getApi().getSandboxService().postOrderSync(instrument.getFigi(), quantity, quotation,
-                    OrderDirection.ORDER_DIRECTION_BUY, getAccountId(), OrderType.ORDER_TYPE_MARKET, uuid);
+            var result = getApi().getSandboxService().postOrderSync(
+                    instrument.getFigi(), quantity, quotation,
+                    OrderDirection.ORDER_DIRECTION_BUY, getAccountId(),
+                    OrderType.ORDER_TYPE_MARKET, uuid);
+
             return OrderResult.builder()
                     .commission(ConvertorUtils.toBigDecimal(result.getInitialCommission(), 8))
                     .price(getOrderPrice(result.getInitialOrderPricePt(), result.getExecutedOrderPrice(), price, count))
                     .build();
         } else {
-            var result = getApi().getOrdersService().postOrderSync(instrument.getFigi(), quantity, quotation,
-                    OrderDirection.ORDER_DIRECTION_BUY, getAccountId(), OrderType.ORDER_TYPE_MARKET, uuid);
+            var result = getApi().getOrdersService().postOrderSync(
+                    instrument.getFigi(), quantity, quotation,
+                    OrderDirection.ORDER_DIRECTION_BUY, getAccountId(),
+                    OrderType.ORDER_TYPE_MARKET, uuid);
+
             return OrderResult.builder()
                     .commission(ConvertorUtils.toBigDecimal(result.getInitialCommission(), 8))
                     .price(getOrderPrice(result.getInitialOrderPricePt(), result.getExecutedOrderPrice(), price, count))
@@ -50,29 +55,47 @@ public class TinkoffGRPCAPI extends ATinkoffAPI {
 
     public OrderResult sell(InstrumentService.Instrument instrument, BigDecimal price, Integer count) {
         long quantity = count / instrument.getLot();
-        var quotation = Quotation.newBuilder()
-                .setUnits(price.longValue())
-                .setUnits(price.remainder(BigDecimal.ONE).movePointRight(9).intValue())
-                .build();
+        var quotation = toQuotation(price);
         var uuid = UUID.randomUUID().toString();
+
         log.info("Send postOrderSync with: figi {}, quantity {}, quotation {}, direction {}, acc {}, type {}, id {}",
-                instrument.getFigi(), quantity, quotation, OrderDirection.ORDER_DIRECTION_SELL, getAccountId(), OrderType.ORDER_TYPE_MARKET, uuid);
+                instrument.getFigi(), quantity, quotation, OrderDirection.ORDER_DIRECTION_SELL,
+                getAccountId(), OrderType.ORDER_TYPE_MARKET, uuid);
 
         if (getIsSandboxMode()) {
-            var result = getApi().getSandboxService().postOrderSync(instrument.getFigi(), quantity, quotation,
-                    OrderDirection.ORDER_DIRECTION_SELL, getAccountId(), OrderType.ORDER_TYPE_MARKET, uuid);
+            var result = getApi().getSandboxService().postOrderSync(
+                    instrument.getFigi(), quantity, quotation,
+                    OrderDirection.ORDER_DIRECTION_SELL, getAccountId(),
+                    OrderType.ORDER_TYPE_MARKET, uuid);
+
             return OrderResult.builder()
                     .commission(ConvertorUtils.toBigDecimal(result.getInitialCommission(), 8))
                     .price(getOrderPrice(result.getInitialOrderPricePt(), result.getExecutedOrderPrice(), price, count))
                     .build();
         } else {
-            var result = getApi().getOrdersService().postOrderSync(instrument.getFigi(), quantity, quotation,
-                    OrderDirection.ORDER_DIRECTION_SELL, getAccountId(), OrderType.ORDER_TYPE_MARKET, uuid);
+            var result = getApi().getOrdersService().postOrderSync(
+                    instrument.getFigi(), quantity, quotation,
+                    OrderDirection.ORDER_DIRECTION_SELL, getAccountId(),
+                    OrderType.ORDER_TYPE_MARKET, uuid);
+
             return OrderResult.builder()
                     .commission(ConvertorUtils.toBigDecimal(result.getInitialCommission(), 8))
                     .price(getOrderPrice(result.getInitialOrderPricePt(), result.getExecutedOrderPrice(), price, count))
                     .build();
         }
+    }
+
+    /**
+     * Преобразование цены в формат Quotation.
+     * Units — целая часть цены.
+     * Nano — дробная часть в миллиардных долях.
+     */
+    static Quotation toQuotation(BigDecimal price) {
+        return Quotation.newBuilder()
+                .setUnits(price.longValue())
+                .setNano(price.remainder(BigDecimal.ONE)
+                        .movePointRight(9).intValue())
+                .build();
     }
 
     /**
@@ -85,9 +108,11 @@ public class TinkoffGRPCAPI extends ATinkoffAPI {
     private BigDecimal getOrderPrice(Quotation initialOrderPricePt, MoneyValue executedOrderPrice,
                                      BigDecimal price, Integer count) {
         var orderPricePt = ConvertorUtils.toBigDecimal(initialOrderPricePt, 4);
+
         if (orderPricePt.compareTo(BigDecimal.ZERO) != 0) {
             return orderPricePt.divide(BigDecimal.valueOf(count), 4, RoundingMode.HALF_EVEN);
         }
+
         return ConvertorUtils.toBigDecimal(executedOrderPrice, 4, price);
     }
 }
